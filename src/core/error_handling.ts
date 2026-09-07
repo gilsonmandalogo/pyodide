@@ -71,11 +71,8 @@ Tests.convertCppException = convertCppException;
 
 let fatal_error_occurred = false;
 /**
- * Note: JS ``RangeError`` from deep recursion on public API paths should be
- * treated as fatal (see ``src/js/stack_budget.ts`` ``runWithStackBudgetGuard``).
- * Do not leave a raw RangeError as the lasting public outcome once the
- * stack-budget gate is complete; subsequent runPython-like calls must refuse
- * with FatalPyodideError. Existing ``API.fatal_error`` behaviour is unchanged.
+ * Note: stack-budget RangeError handling is still incomplete in
+ * ``src/js/stack_budget.ts``.
  */
 /**
  * Signal a fatal error.

@@ -7,6 +7,12 @@ import { loadBinaryFile, nodeFSMod } from "./compat";
 import { version } from "./version";
 import { setStdin, setStdout, setStderr } from "./streams";
 import { scheduleCallback } from "./scheduler";
+import {
+  estimateJsStackHeadroom,
+  recommendPythonRecursionLimit,
+  runWithStackBudgetGuard,
+  FatalPyodideError as StackBudgetFatalPyodideError,
+} from "./stack_budget";
 import { TypedArray, PackageData, FSType, Lockfile } from "./types";
 import { RUNTIME_ENV } from "./environments";
 // @ts-ignore
@@ -141,6 +147,23 @@ export class PyodideAPI_ {
   static setStdout = setStdout;
   /** @hidden */
   static setStderr = setStderr;
+
+  /**
+   * Estimate remaining JS call-stack headroom (see ``stack_budget.ts``).
+   * Used when choosing a safe Python recursion limit for the host.
+   */
+  static estimateJsStackHeadroom = estimateJsStackHeadroom;
+  /**
+   * Recommend a Python recursion limit for ``window`` / ``worker`` / ``node``.
+   */
+  static recommendPythonRecursionLimit = recommendPythonRecursionLimit;
+  /**
+   * Run a public API body under the stack-budget RangeError fatal gate.
+   */
+  static runWithStackBudgetGuard = runWithStackBudgetGuard;
+  /** Fatal error class used after a stack-budget fatal (mirrors error_handling). */
+  static StackBudgetFatalPyodideError = StackBudgetFatalPyodideError;
+
 
   /**
    *

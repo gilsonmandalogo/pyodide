@@ -26,4 +26,11 @@ describe("scheduleCallback", () => {
     t.mock.timers.tick(11);
     assert.ok(executed);
   });
+
+  it("returns a cancel handle with an idempotent cancel method", () => {
+    const handle = scheduleCallback(() => {}, 50);
+    assert.equal(typeof handle.cancel, "function");
+    handle.cancel();
+    handle.cancel();
+  });
 });

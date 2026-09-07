@@ -10,6 +10,16 @@ let sharedChannel: MessageChannel | null = null;
 const taskQueue: number[] = [];
 
 /**
+ * Cancel handle returned by {@link scheduleCallback}.
+ * Call {@link ScheduledCallbackHandle.cancel} to prevent a pending callback
+ * from running. Cancel is idempotent; cancel after the callback has already
+ * run is a no-op.
+ */
+export interface ScheduledCallbackHandle {
+  cancel(): void;
+}
+
+/**
  * Setup global message event listener to handle immediate callbacks
  */
 function installPostMessageHandler() {
@@ -71,6 +81,14 @@ function ensureSharedChannel() {
 
 ensureSharedChannel();
 
+function makeCancelHandle(handle: number): ScheduledCallbackHandle {
+  return {
+    cancel() {
+      delete tasks[handle];
+    },
+  };
+}
+
 /**
  * Implementation of zero-delay scheduler for immediate callbacks
  * Try our best to use the fastest method available, based on the current environment.
@@ -86,14 +104,19 @@ ensureSharedChannel();
  *   - Ref: https://github.com/zloirock/core-js/issues/624
  *   - Ref: https://github.com/YuzuJS/setImmediate/issues/80
  */
-function scheduleCallbackImmediate(callback: () => void) {
+function scheduleCallbackImmediate(
+  callback: () => void,
+): ScheduledCallbackHandle {
   if (RUNTIME_ENV.IN_NODE) {
+    const handle = nextTaskHandle++;
     setImmediate(callback);
+    return makeCancelHandle(handle);
   } else if (sharedChannel) {
     const handle = nextTaskHandle++;
     tasks[handle] = callback;
     taskQueue.push(handle);
     sharedChannel.port2.postMessage(0);
+    return makeCancelHandle(handle);
   } else if (
     RUNTIME_ENV.IN_BROWSER_MAIN_THREAD &&
     typeof globalThis.postMessage === "function"
@@ -104,23 +127,33 @@ function scheduleCallbackImmediate(callback: () => void) {
       scheduleCallbackImmediateMessagePrefix + handle,
       "*",
     );
+    return makeCancelHandle(handle);
   } else {
+    const handle = nextTaskHandle++;
     setTimeout(callback, 0);
+    return makeCancelHandle(handle);
   }
 }
 
 /**
  * Schedule a callback. Supports both immediate and delayed callbacks.
+ * Returns a handle whose {@link ScheduledCallbackHandle.cancel} method can
+ * cancel a still-pending callback.
  * @param callback The callback to be scheduled
  * @param timeout The delay in milliseconds before the callback is called
  * @hidden
  */
-export function scheduleCallback(callback: () => void, timeout: number = 0) {
+export function scheduleCallback(
+  callback: () => void,
+  timeout: number = 0,
+): ScheduledCallbackHandle {
   if (timeout <= 2) {
     // for a very short delay (0, 1), use immediate callback
-    scheduleCallbackImmediate(callback);
+    return scheduleCallbackImmediate(callback);
   } else {
+    const handle = nextTaskHandle++;
     setTimeout(callback, timeout);
+    return makeCancelHandle(handle);
   }
 }
 
